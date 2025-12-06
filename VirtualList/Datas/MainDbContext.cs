@@ -7,6 +7,7 @@ public class MainDbContext(string connectionString, ILoggerFactory loggerFactory
     public DbSet<UserInfo> Users { get; set; }
     public DbSet<FileNamespaceInfo> FileNamespaces { get; set; }
     public DbSet<SharedFileInfo> SharedFiles { get; set; }
+    public DbSet<LoginInfo> LoginInfos { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -20,7 +21,7 @@ public class MainDbContext(string connectionString, ILoggerFactory loggerFactory
         modelBuilder.Entity<FileNamespaceInfo>()
             .HasOne(e => e.Owner)
             .WithMany(e => e.OwnNamespaces)
-            .HasForeignKey(e => e.OwnerId)
+            .HasForeignKey(e => e.OwnerName)
             .IsRequired();
         modelBuilder.Entity<FileNamespaceInfo>()
             .HasMany(e => e.ReadAccessUsers)

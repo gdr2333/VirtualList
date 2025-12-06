@@ -1,0 +1,67 @@
+﻿@page "/login"
+@rendermode InteractiveServer
+
+@using System.Text
+@using System.Security.Cryptography;
+@using Datas;
+
+@inject MainDbContext mainDb
+@inject ILoggerFactory loggerFactory
+@inject IJSRuntime js
+
+<PageTitle>VirtualList - 登录</PageTitle>
+
+<div style="align-self:center; display: flow">
+    @if(LoginFails >= 5)
+    {
+        <h3>登陆失败次数过多。连接被锁定。</h3>
+    }
+    else
+    {
+        <h3>请先登录。</h3>
+        <p>用户名：</p>
+        <input @bind="UserName" type="text" />
+        <p>密码：</p>
+        <input @bind="Password" type="password" />
+        @if(LoginFails != 0)
+        {
+            <p style="color: red">用户名或密码错误，请重试。</p>
+        }
+        <button @onclick="DoLogin">登录</button>
+    }
+</div>
+
+@code {
+    private string UserName { get; set; } = "";
+    private string Password { get; set; } = "";
+
+    private int LoginFails { get; set; } = 0;
+
+    private ILogger? realLogger;
+    private ILogger logger { get => realLogger ?? loggerFactory.CreateLogger("LoginPage"); }
+
+    async Task DoLogin()
+    {
+        var userInfo = mainDb.Users.Find(UserName) as UserInfo;
+        if (userInfo is null || !userInfo.PasswordHash.SequenceEqual(HMACSHA3_384.HashData(userInfo.PasswordSalt, Encoding.UTF8.GetBytes(Password))))
+        {
+            logger.LogInformation($"用户{UserName}登录失败：{(userInfo is null ? "密码错误":"用户不存在")}");
+            LoginFails++;
+            return;
+        }
+        using var rng = RandomNumberGenerator.Create();
+        byte[] token = new byte[64];
+        rng.GetBytes(token);
+        var loginInfo = new LoginInfo()
+            {
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddMonths(1),
+                LastUseAt = DateTime.UtcNow,
+                Token = token,
+                User = userInfo
+            };
+        mainDb.LoginInfos.Add(loginInfo);
+        logger.LogInformation($"用户{UserName}登陆成功");
+        await js.InvokeVoidAsync("WriteCookie.WriteCookie", "Token", Convert.ToBase64String(token), DateTime.Now.AddMonths(1));
+    }
+}

@@ -2,16 +2,12 @@
 
 namespace VirtualList.Datas;
 
-public class SharedFileInfo
+public class LoginInfo
 {
     [Key]
-    public Guid ShareId { get; set; }
-
+    public byte[] Token { get; set; } = null!;
     public UserInfo User { get; set; } = null!;
-
-    public string RealPath { get; set; } = null!;
-
     public DateTime CreatedAt { get; set; }
-
+    public DateTime LastUseAt { get; set; }
     public DateTime ExpiresAt { get; set; }
 }

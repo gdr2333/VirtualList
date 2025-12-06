@@ -37,6 +37,8 @@ using (var dbc = new MainDbContext(builder.Configuration.GetConnectionString("Ma
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+builder.Services.AddTransient<MainDbContext>((sc) => new(builder.Configuration.GetConnectionString("MainContext"), sc.GetService<ILoggerFactory>()));
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
