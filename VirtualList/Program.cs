@@ -2,13 +2,14 @@ using System.Security.Cryptography;
 using System.Text;
 using VirtualList.Components;
 using VirtualList.Datas;
+using VirtualList.Middlewares;
 
 var builder = WebApplication.CreateBuilder(args);
 
 using (var dbc = new MainDbContext(builder.Configuration.GetConnectionString("MainContext"), LoggerFactory.Create((lb) => lb.AddSimpleConsole())))
 {
     dbc.Database.EnsureCreated();
-    if(!dbc.Users.Any(u => u.UserName == "root"))
+    if(!dbc.Users.Any(u => u.Name == "root"))
     {
         using var rng = RandomNumberGenerator.Create();
         var salt = new byte[16];
@@ -20,7 +21,7 @@ using (var dbc = new MainDbContext(builder.Configuration.GetConnectionString("Ma
         Console.WriteLine($"root password: {passwordString}");
         var userInfo = new UserInfo()
         {
-            UserName = "root",
+            Name = "root",
             PasswordSalt = salt,
             PasswordHash = HMACSHA3_384.HashData(salt, passwordBytes),
             CreatedTime = DateTime.UtcNow,
@@ -40,6 +41,14 @@ using (var dbc = new MainDbContext(builder.Configuration.GetConnectionString("Ma
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+builder.Services.AddAuthentication(oa =>
+{
+    oa.DefaultAuthenticateScheme = "cookie";
+    oa.DefaultChallengeScheme = "cookie";
+    oa.AddScheme<AuthenticationHandler>("cookie", "Cookie");
+    oa.AddScheme<AuthenticationHandler>("basic", "Basic");
+});
+
 builder.Services.AddTransient<MainDbContext>((sc) => new(builder.Configuration.GetConnectionString("MainContext"), sc.GetService<ILoggerFactory>()));
 
 var app = builder.Build();
@@ -50,6 +59,12 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+app.UseAntiforgery();
+
+app.UseRouting();
+
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseAntiforgery();
 
 app.MapStaticAssets();

@@ -5,7 +5,7 @@ namespace VirtualList.Datas;
 public class UserInfo
 {
     [Key]
-    public string UserName { get; set; } = null!;
+    public string Name { get; set; } = null!;
     // HMACSHA3_384(salt, utf8encoding(password))
     public byte[] PasswordHash { get; set; } = null!;
     public byte[] PasswordSalt { get; set; } = null!;
