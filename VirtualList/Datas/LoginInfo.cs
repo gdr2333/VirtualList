@@ -8,6 +8,5 @@ public class LoginInfo
     public byte[] Token { get; set; } = null!;
     public UserInfo User { get; set; } = null!;
     public DateTime CreatedAt { get; set; }
-    public DateTime LastUseAt { get; set; }
     public DateTime ExpiresAt { get; set; }
 }
