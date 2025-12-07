@@ -24,9 +24,9 @@
         <h3>更改密码</h3>
         旧密码：
         <FluentTextField @bind-Value="oldPassword" TextFieldType="TextFieldType.Password" />
-        新密码：
+        <span>新密码：</span>
         <FluentTextField @bind-Value="newPassword" TextFieldType="TextFieldType.Password" />
-       确认新密码：
+        <span>确认新密码：</span>
         <FluentTextField @bind-Value="newPassword2" TextFieldType="TextFieldType.Password" />
         <FluentButton OnClick="@UpdatePassword" BackgroundColor="red" Color="white">更新密码</FluentButton>
         @if (passwordChanged)

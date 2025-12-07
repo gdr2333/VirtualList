@@ -20,9 +20,9 @@
     else
     {
         <h3>请先登录。</h3>
-        <p>用户名：</p>
+        <span>用户名：</span>
         <FluentTextField @bind-Value="UserName" />
-        <p>密码：</p>
+        <span>密码：</span>
         <FluentTextField @bind-Value="Password" TextFieldType="TextFieldType.Password" />
         @if(LoginFails != 0)
         {
@@ -55,13 +55,13 @@
         rng.GetBytes(token);
         var loginInfo = new LoginInfo()
             {
-                CreatedAt = DateTime.Now,
-                ExpiresAt = DateTime.Now.AddMonths(1),
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddMonths(1),
                 Token = token,
                 User = userInfo
             };
         mainDb.LoginInfos.Add(loginInfo);
-        userInfo.LastLogin = DateTime.Now;
+        userInfo.LastLogin = DateTime.UtcNow;
         mainDb.SaveChanges();
         logger.LogInformation($"用户{UserName}登陆成功");
         await js.InvokeVoidAsync("WriteCookie.WriteCookie", "Token", Convert.ToBase64String(token), DateTime.Now.AddMonths(1));
