@@ -362,7 +362,10 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 
-#SQLite database
+# SQLite database
 *.db
 *.db-shm
 *.db-wal
+
+# autogen yaml config
+DavServerConfig-AutoGen.yaml
