@@ -4,14 +4,15 @@
 @using System.Text
 @using System.Security.Cryptography;
 @using Datas;
+@using VirtualList.Helpers;
 
 @inject MainDbContext mainDb
 @inject ILoggerFactory loggerFactory
 @inject IJSRuntime js
 
-<PageTitle>VirtualList - 登录</PageTitle>
+<PageTitle>登录 - VirtualList</PageTitle>
 
-<div style="align-self:center; display: flow">
+<div style="align-self: center; display: flow">
     @if(LoginFails >= 5)
     {
         <h3>登陆失败次数过多。连接被锁定。</h3>
@@ -45,9 +46,9 @@
     async Task DoLogin()
     {
         var userInfo = mainDb.Users.Find(UserName) as UserInfo;
-        if (userInfo is null || !userInfo.PasswordHash.SequenceEqual(HMACSHA3_384.HashData(userInfo.PasswordSalt, Encoding.UTF8.GetBytes(Password))))
+        if (userInfo is null || !userInfo.PasswordHash.SequenceEqual(PasswordHelper.HashPassword(userInfo.PasswordSalt, Password)))
         {
-            logger.LogInformation($"用户{UserName}登录失败：{(userInfo is null ? "密码错误":"用户不存在")}");
+            logger.LogInformation($"用户{UserName}登录失败：{(userInfo is not null ? "密码错误" : "用户不存在")}");
             LoginFails++;
             return;
         }

@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using VirtualList.Components;
 using VirtualList.Datas;
+using VirtualList.Helpers;
 using VirtualList.Middlewares;
 using VirtualList.Services;
 using Yarp.ReverseProxy.Configuration;
@@ -27,13 +28,12 @@ using (var dbc = new MainDbContext(builder.Configuration.GetConnectionString("Ma
         rng.GetBytes(passwordRandomByte);
         rng.GetBytes(salt);
         var passwordString = Convert.ToBase64String(passwordRandomByte);
-        var passwordBytes = Encoding.UTF8.GetBytes(passwordString);
         Console.WriteLine($"root password: {passwordString}");
         var userInfo = new UserInfo()
         {
             Name = "root",
             PasswordSalt = salt,
-            PasswordHash = HMACSHA3_384.HashData(salt, passwordBytes),
+            PasswordHash = PasswordHelper.HashPassword(salt, passwordString),
             CreatedTime = DateTime.UtcNow,
             LastLogin = DateTime.UtcNow,
             LoginInfos = [],

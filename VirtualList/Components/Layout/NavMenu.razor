@@ -1,0 +1,28 @@
+﻿@using System.Security.Claims
+
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<div style="width: 250px; height: 100%; display: flow">
+    <h3>VirtualList Alpha</h3>
+    <div>
+        <AuthorizeView>
+            <Authorized>
+                <a href="/user">@userName，欢迎回来！</a>
+            </Authorized>
+            <NotAuthorized>
+                请<a href="/login">登录</a>
+            </NotAuthorized>
+        </AuthorizeView>
+    </div>
+</div>
+
+@code {
+    string userName = "";
+    protected override async Task OnInitializedAsync()
+    {
+        userName = (await AuthenticationStateProvider
+            .GetAuthenticationStateAsync())
+            .User.FindFirstValue(ClaimTypes.Name) ?? "";
+        await base.OnInitializedAsync();
+    }
+}

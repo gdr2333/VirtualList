@@ -1,0 +1,81 @@
+﻿@page "/user"
+@rendermode InteractiveServer
+
+@using System.Security.Claims
+@using System.Security.Cryptography
+@using System.Text
+@using VirtualList.Datas
+@using VirtualList.Helpers
+
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject MainDbContext mainDb
+
+<PageTitle>用户信息 - VirtualList</PageTitle>
+
+<div style="display: flow">
+    <p>注册时间：@userInfo.CreatedTime</p>
+    <p>上次登录时间：@userInfo.LastLogin</p>
+
+    <h3>更改密码</h3>
+    <p>旧密码：</p>
+    <input @bind="oldPassword" type="password"/>
+    <p>新密码：</p>
+    <input @bind="newPassword" type="password"/>
+    <p>确认新密码：</p>
+    <input @bind="newPassword2" type="password"/>
+    <div><button style="color: red" @onclick="UpdatePassword">更新密码</button></div>
+    @if(passwordChanged)
+    {
+        <p style="color: green">密码更新成功</p>
+    }
+    @if(wrongOldPassword)
+    {
+        <p style="color: red">旧密码错误</p>
+    }
+    @if(newPasswordNotSame)
+    {
+        <p style="color: red">两次输入的新密码不一致</p>
+    }
+</div>
+
+@code
+{
+    string userName = "";
+    UserInfo userInfo;
+    bool passwordChanged = false, wrongOldPassword = false, newPasswordNotSame = false;
+
+    string oldPassword = "", newPassword = "", newPassword2 = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        userName = (await AuthenticationStateProvider
+            .GetAuthenticationStateAsync())
+            .User.FindFirstValue(ClaimTypes.Name) ?? "";
+        userInfo = mainDb.Users.Find(userName)!;
+        await base.OnInitializedAsync();
+    }
+
+    void UpdatePassword()
+    {
+        if (userInfo is null || !userInfo.PasswordHash.SequenceEqual(PasswordHelper.HashPassword(userInfo.PasswordSalt, oldPassword)))
+        {
+            wrongOldPassword = true;
+            passwordChanged = false;
+            newPasswordNotSame = false;
+            return;
+        }
+        wrongOldPassword = false;
+        if(newPassword != newPassword2)
+        {
+            passwordChanged = false;
+            newPasswordNotSame = true;
+            return;
+        }
+        newPasswordNotSame = false;
+        userInfo.PasswordHash = PasswordHelper.HashPassword(userInfo.PasswordSalt, newPassword);
+        mainDb.LoginInfos.RemoveRange(from loginInfo in mainDb.LoginInfos where loginInfo.User == userInfo select loginInfo);
+        mainDb.SaveChanges();
+        passwordChanged = true;
+        return;
+    }
+}
