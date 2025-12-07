@@ -14,18 +14,21 @@
 
 @if(userInfo is not null)
 {
-    <div style="display: flow">
-        <p>注册时间：@userInfo.CreatedTime</p>
-        <p>上次登录时间：@userInfo.LastLogin</p>
+    <FluentStack Orientation="Orientation.Vertical">
+        <p>
+            注册时间：@userInfo.CreatedTime
+            <br/>
+            上次登录时间：@userInfo.LastLogin
+        </p>
 
         <h3>更改密码</h3>
-        <p>旧密码：</p>
-        <input @bind="oldPassword" type="password" />
-        <p>新密码：</p>
-        <input @bind="newPassword" type="password" />
-        <p>确认新密码：</p>
-        <input @bind="newPassword2" type="password" />
-        <div><button style="color: red" @onclick="UpdatePassword">更新密码</button></div>
+        旧密码：
+        <FluentTextField @bind-Value="oldPassword" TextFieldType="TextFieldType.Password" />
+        新密码：
+        <FluentTextField @bind-Value="newPassword" TextFieldType="TextFieldType.Password" />
+       确认新密码：
+        <FluentTextField @bind-Value="newPassword2" TextFieldType="TextFieldType.Password" />
+        <FluentButton OnClick="@UpdatePassword" BackgroundColor="red" Color="white">更新密码</FluentButton>
         @if (passwordChanged)
         {
             <p style="color: green">密码更新成功</p>
@@ -38,7 +41,7 @@
         {
             <p style="color: red">两次输入的新密码不一致</p>
         }
-    </div>
+    </FluentStack>
 }
 else
 {

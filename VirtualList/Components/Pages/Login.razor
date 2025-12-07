@@ -12,7 +12,7 @@
 
 <PageTitle>登录 - VirtualList</PageTitle>
 
-<div style="align-self: center; display: flow">
+<FluentStack Orientation="Orientation.Vertical">
     @if(LoginFails >= 5)
     {
         <h3>登陆失败次数过多。连接被锁定。</h3>
@@ -21,18 +21,16 @@
     {
         <h3>请先登录。</h3>
         <p>用户名：</p>
-        <input @bind="UserName" type="text" />
+        <FluentTextField @bind-Value="UserName" />
         <p>密码：</p>
-        <input @bind="Password" type="password" />
+        <FluentTextField @bind-Value="Password" TextFieldType="TextFieldType.Password" />
         @if(LoginFails != 0)
         {
             <p style="color: red">用户名或密码错误，请重试。</p>
         }
-        <div>
-            <button @onclick="DoLogin">登录</button>
-        </div>
+        <FluentButton OnClick="@DoLogin">登录</FluentButton>
     }
-</div>
+</FluentStack>
 
 @code {
     private string UserName { get; set; } = "";

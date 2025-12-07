@@ -2,19 +2,17 @@
 
 @inject AuthenticationStateProvider AuthenticationStateProvider
 
-<div style="width: 250px; height: 100%; display: flow">
+<FluentNavMenu Width="250">
     <h3>VirtualList Alpha</h3>
-    <div>
-        <AuthorizeView>
-            <Authorized>
-                <a href="/user">@userName，欢迎回来！</a>
-            </Authorized>
-            <NotAuthorized>
-                请<a href="/login">登录</a>
-            </NotAuthorized>
-        </AuthorizeView>
-    </div>
-</div>
+    <AuthorizeView>
+        <Authorized>
+            <FluentNavLink Href="/user">@userName，欢迎回来！</FluentNavLink>
+        </Authorized>
+        <NotAuthorized>
+            请<FluentNavLink Href="/login">登录</FluentNavLink>
+        </NotAuthorized>
+    </AuthorizeView>
+</FluentNavMenu>
 
 @code {
     string userName = "";

@@ -1,3 +1,4 @@
+using Microsoft.FluentUI.AspNetCore.Components;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -112,6 +113,9 @@ builder.Services.AddReverseProxy()
     );
 
 builder.Services.AddHostedService<WebDavServerService>();
+
+builder.Services.AddFluentUIComponents();
+builder.Services.AddHttpClient();
 
 var app = builder.Build();
 
