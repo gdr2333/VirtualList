@@ -12,36 +12,43 @@
 
 <PageTitle>用户信息 - VirtualList</PageTitle>
 
-<div style="display: flow">
-    <p>注册时间：@userInfo.CreatedTime</p>
-    <p>上次登录时间：@userInfo.LastLogin</p>
+@if(userInfo is not null)
+{
+    <div style="display: flow">
+        <p>注册时间：@userInfo.CreatedTime</p>
+        <p>上次登录时间：@userInfo.LastLogin</p>
 
-    <h3>更改密码</h3>
-    <p>旧密码：</p>
-    <input @bind="oldPassword" type="password"/>
-    <p>新密码：</p>
-    <input @bind="newPassword" type="password"/>
-    <p>确认新密码：</p>
-    <input @bind="newPassword2" type="password"/>
-    <div><button style="color: red" @onclick="UpdatePassword">更新密码</button></div>
-    @if(passwordChanged)
-    {
-        <p style="color: green">密码更新成功</p>
-    }
-    @if(wrongOldPassword)
-    {
-        <p style="color: red">旧密码错误</p>
-    }
-    @if(newPasswordNotSame)
-    {
-        <p style="color: red">两次输入的新密码不一致</p>
-    }
-</div>
+        <h3>更改密码</h3>
+        <p>旧密码：</p>
+        <input @bind="oldPassword" type="password" />
+        <p>新密码：</p>
+        <input @bind="newPassword" type="password" />
+        <p>确认新密码：</p>
+        <input @bind="newPassword2" type="password" />
+        <div><button style="color: red" @onclick="UpdatePassword">更新密码</button></div>
+        @if (passwordChanged)
+        {
+            <p style="color: green">密码更新成功</p>
+        }
+        @if (wrongOldPassword)
+        {
+            <p style="color: red">旧密码错误</p>
+        }
+        @if (newPasswordNotSame)
+        {
+            <p style="color: red">两次输入的新密码不一致</p>
+        }
+    </div>
+}
+else
+{
+    <p>用户信息正在加载，请稍候......</p>
+}
 
 @code
 {
     string userName = "";
-    UserInfo userInfo;
+    UserInfo? userInfo;
     bool passwordChanged = false, wrongOldPassword = false, newPasswordNotSame = false;
 
     string oldPassword = "", newPassword = "", newPassword2 = "";
@@ -51,7 +58,7 @@
         userName = (await AuthenticationStateProvider
             .GetAuthenticationStateAsync())
             .User.FindFirstValue(ClaimTypes.Name) ?? "";
-        userInfo = mainDb.Users.Find(userName)!;
+        userInfo = mainDb.Users.Find(userName);
         await base.OnInitializedAsync();
     }
 
