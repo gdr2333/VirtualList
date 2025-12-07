@@ -4,7 +4,6 @@ using System.Net;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.RegularExpressions;
 using VirtualList.Datas;
 
 namespace VirtualList.Middlewares;
@@ -32,7 +31,7 @@ public partial class AuthenticationHandler(MainDbContext mainDb, ILoggerFactory 
                     }
                 }
         // 只对WebDAV路径开放Basic认证
-        if (WebdavRegex().IsMatch(_context.Request.Path))
+        if (_context.Request.Path.StartsWithSegments("/webdav"))
         {
             var auth = _context.Request.Headers.Authorization.ToString();
             if (auth.StartsWith("Basic "))
@@ -54,7 +53,7 @@ public partial class AuthenticationHandler(MainDbContext mainDb, ILoggerFactory 
 
     public async Task ChallengeAsync(AuthenticationProperties? properties)
     {
-        if (WebdavRegex().IsMatch(_context.Request.Path))
+        if (_context.Request.Path.StartsWithSegments("/webdav"))
         {
             _context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             _context.Response.Headers.Append("WWW-Authenticate", "basic realm=\"WebDAV需要Basic认证\"");
@@ -77,7 +76,4 @@ public partial class AuthenticationHandler(MainDbContext mainDb, ILoggerFactory 
     {
         _context = context;
     }
-
-    [GeneratedRegex("^http(?:s)?://.+/webdav")]
-    private static partial Regex WebdavRegex();
 }
