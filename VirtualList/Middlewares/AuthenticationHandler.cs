@@ -27,7 +27,7 @@ public partial class AuthenticationHandler(MainDbContext mainDb, ILoggerFactory 
                             .Load();
                         if (logger.IsEnabled(LogLevel.Debug))
                             logger.LogDebug($"对{loginInfo.User.Name}验证成功，使用Cookie:Token");
-                        return AuthenticateResult.Success(new(new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Name, loginInfo.User.Name)])), "cookie"));
+                        return AuthenticateResult.Success(new(new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Name, loginInfo.User.Name)], "cookie")) , "cookie"));
                     }
                 }
         // 只对WebDAV路径开放Basic认证
@@ -44,7 +44,7 @@ public partial class AuthenticationHandler(MainDbContext mainDb, ILoggerFactory 
                     logger.LogDebug($"对{userInfo.Name}验证成功，使用Basic");
                     userInfo.LastLogin = DateTime.UtcNow;
                     mainDb.SaveChanges();
-                    return AuthenticateResult.Success(new(new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Name, userInfo.Name)])), "basic"));
+                    return AuthenticateResult.Success(new(new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Name, userInfo.Name)], "basic")), "basic"));
                 }
             }
         }
