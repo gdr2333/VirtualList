@@ -20,7 +20,7 @@ public partial class AuthenticationHandler(MainDbContext mainDb, ILoggerFactory 
                 if (cookie?.StartsWith("Token=") ?? false)
                 {
                     var loginInfo = mainDb.LoginInfos.Find(Convert.FromBase64String(cookie[6..].Trim()));
-                    if (loginInfo != null && loginInfo.ExpiresAt > DateTime.UtcNow)
+                    if (loginInfo != null && loginInfo.ExpiresAt > DateTime.Now)
                     {
                         mainDb.Entry(loginInfo)
                             .Reference(li => li.User)
@@ -42,7 +42,7 @@ public partial class AuthenticationHandler(MainDbContext mainDb, ILoggerFactory 
                 if (userInfo is not null && userInfo.PasswordHash.SequenceEqual(HMACSHA3_384.HashData(userInfo.PasswordSalt, Encoding.UTF8.GetBytes(authValues[1]))))
                 {
                     logger.LogDebug($"对{userInfo.Name}验证成功，使用Basic");
-                    userInfo.LastLogin = DateTime.UtcNow;
+                    userInfo.LastLogin = DateTime.Now;
                     mainDb.SaveChanges();
                     return AuthenticateResult.Success(new(new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Name, userInfo.Name)], "basic")), "basic"));
                 }
