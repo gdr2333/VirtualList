@@ -7,6 +7,10 @@
     <AuthorizeView>
         <Authorized>
             <FluentNavLink Href="/user">@userName，欢迎回来！</FluentNavLink>
+            @if(userName == "root")
+            {
+                <FluentNavLink Href="/users">管理用户数据</FluentNavLink>
+            }
         </Authorized>
         <NotAuthorized>
             <FluentNavLink Href="/login">请登录</FluentNavLink>

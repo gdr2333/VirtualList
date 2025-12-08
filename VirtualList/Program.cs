@@ -1,6 +1,5 @@
 using Microsoft.FluentUI.AspNetCore.Components;
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using VirtualList.Components;
 using VirtualList.Datas;
@@ -36,12 +35,7 @@ using (var dbc = new MainDbContext(builder.Configuration.GetConnectionString("Ma
             PasswordSalt = salt,
             PasswordHash = PasswordHelper.HashPassword(salt, passwordString),
             CreatedTime = DateTime.Now,
-            LastLogin = DateTime.Now,
-            LoginInfos = [],
-            OwnNamespaces = [],
-            ReadableNamespaces = [],
-            WriteableNamespaces = [],
-            SharedFiles = []
+            LastLogin = DateTime.Now
         };
         dbc.Users.Add(userInfo);
         dbc.SaveChanges();

@@ -1,0 +1,77 @@
+﻿@page "/users"
+@rendermode InteractiveServer
+
+@using System.Security.Claims
+@using VirtualList.Datas
+
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject MainDbContext mainDb
+
+<PageTitle>用户管理 - VirtualList</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical">
+    <AuthorizeView>
+        <Authorized>
+            @if (userName == "root")
+            {
+                // RefreshUsers自己会调用RefreshDataAsync
+                _ = RefreshUsers();
+                <h3>用户列表</h3>
+                <FluentStack Orientation="Orientation.Horizontal">
+                    <FluentButton Style="margin: 5px" OnClick="() => HaveNewUserPanel = true">添加用户</FluentButton>
+                    <FluentButton Style="margin: 5px" OnClick="DeleteSelectedUser">删除选定用户</FluentButton>
+                </FluentStack>
+                <FluentDataGrid Items="allUsers" @ref="grid">
+                    <SelectColumn TGridItem="UserInfo" SelectMode="DataGridSelectMode.Single" Property="@(u => u == selectedUser)" OnSelect="@(u => selectedUser = u.Selected ? u.Item : null)" />
+                    <PropertyColumn Property="@(u => u.Name)" Title="用户名" Sortable="true" />
+                    <PropertyColumn Property="@(u => u.CreatedTime)" Title="注册时间" Sortable="true" />
+                    <PropertyColumn Property="@(u => u.LastLogin)" Title="上次登录时间" Sortable="true" />
+                </FluentDataGrid>
+                @if (HaveNewUserPanel)
+                {
+                    <NewUser OnClose="async () => { HaveNewUserPanel = false; await RefreshUsers(); }" />
+                }
+            }
+            else
+            {
+                <p>只有管理员（root）才能进行用户管理。</p>
+            }
+        </Authorized>
+        <NotAuthorized>
+            <a href="/login">请登录。</a>
+        </NotAuthorized>
+    </AuthorizeView>
+</FluentStack>
+
+@code {
+    string userName = "";
+    UserInfo? thisUser;
+    UserInfo? selectedUser = null;
+    IQueryable<UserInfo> allUsers;
+    bool HaveNewUserPanel = false;
+    FluentDataGrid<UserInfo> grid = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        userName = (await AuthenticationStateProvider
+            .GetAuthenticationStateAsync())
+            .User.FindFirstValue(ClaimTypes.Name) ?? "";
+        thisUser = mainDb.Users.Find(userName);
+        await base.OnInitializedAsync();
+    }
+
+    async Task RefreshUsers()
+    {
+        allUsers = mainDb.Users;
+        await grid.RefreshDataAsync();
+    }
+
+    async Task DeleteSelectedUser()
+    {
+        if(selectedUser != null)
+            mainDb.Users.Remove(selectedUser);
+        mainDb.SaveChanges();
+        selectedUser = null;
+        await RefreshUsers();
+    }
+}
