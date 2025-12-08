@@ -112,6 +112,8 @@ builder.Services.AddReverseProxy()
         ]
     );
 
+builder.Services.AddCascadingAuthenticationState();
+
 builder.Services.AddHostedService<WebDavServerService>();
 
 builder.Services.AddFluentUIComponents();
