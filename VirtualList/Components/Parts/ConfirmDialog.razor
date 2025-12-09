@@ -1,0 +1,32 @@
+﻿<div style="position:fixed; margin: 0%; width: 100%; height: 100%; background: #00000070; z-index: 10;"></div>
+
+<FluentCard Style="position: fixed; width: auto; height: auto; margin: 100px auto auto 100px; z-index: 11;">
+    <FluentStack Orientation="Orientation.Vertical">
+        <h3>@Title</h3>
+        <p>@Message</p>
+        <FluentStack Style="display: block;" Orientation="Orientation.Horizontal">
+            <FluentButton Style="float: right; margin: 5px;"
+                          OnClick="async () => { Confirmed = false; await OnClose.InvokeAsync(); }"
+                          Appearance="@(DefaultConfirmed ? Appearance.Neutral : Appearance.Accent)">
+                取消
+            </FluentButton>
+            <FluentButton Style="float: right; margin: 5px;"
+                          OnClick="async () => { Confirmed = true; await OnClose.InvokeAsync(); }"
+                          Appearance="@(DefaultConfirmed ? Appearance.Accent : Appearance.Neutral)">
+                确认
+            </FluentButton>
+        </FluentStack>
+    </FluentStack>
+</FluentCard>
+
+@code {
+    [Parameter]
+    public string Title { get; set; } = "";
+    [Parameter]
+    public string Message { get; set; } = "";
+    [Parameter]
+    public bool DefaultConfirmed { get; set; }
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+    public bool Confirmed { get; set; }
+}

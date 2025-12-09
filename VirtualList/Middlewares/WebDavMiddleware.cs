@@ -21,29 +21,29 @@ public class WebDavMiddleware(RequestDelegate next, ILoggerFactory loggerFactory
             context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return;
         }
-        if (pathSegments.Length < 2 || !Guid.TryParse(pathSegments[1].Trim('/'), out var fileNamespaceId))
+        if (pathSegments.Length < 2 || !Guid.TryParse(pathSegments[1].Trim('/'), out var FileSpaceId))
         {
             context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
             _logger.LogWarning($"用户{name}尝试访问{context.Request.Path}：无效请求");
             return;
         }
-        var fileNamespace = mainDb.FileNamespaces.Find(fileNamespaceId);
-        if (fileNamespace is null)
+        var FileSpace = mainDb.FileSpaces.Find(FileSpaceId);
+        if (FileSpace is null)
         {
             context.Response.StatusCode = (int)HttpStatusCode.NotFound;
-            _logger.LogWarning($"用户{name}尝试访问不存在的命名空间{fileNamespaceId}");
+            _logger.LogWarning($"用户{name}尝试访问不存在的命名空间{FileSpaceId}");
             return;
         }
-        if (fileNamespace.OwnerName != name)
+        if (FileSpace.OwnerName != name)
             switch (context.Request.Method.ToUpper())
             {
                 case "GET":
                 case "HEAD":
                 case "PROPFIND":
-                    mainDb.Entry(fileNamespace)
+                    mainDb.Entry(FileSpace)
                         .Collection(fn => fn.ReadAccessUsers)
                         .Load();
-                    if (!fileNamespace.ReadAccessUsers.Any(ui => ui.Name == name))
+                    if (!FileSpace.ReadAccessUsers.Any(ui => ui.Name == name))
                     {
                         context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
                         return;
@@ -55,25 +55,27 @@ public class WebDavMiddleware(RequestDelegate next, ILoggerFactory loggerFactory
                 case "MKCOL":
                 case "COPY":
                 case "MOVE":
-                    mainDb.Entry(fileNamespace)
+                    mainDb.Entry(FileSpace)
                         .Collection(fn => fn.WriteAccessUsers)
                         .Load();
-                    if (!fileNamespace.WriteAccessUsers.Any(ui => ui.Name == name))
+                    if (!FileSpace.WriteAccessUsers.Any(ui => ui.Name == name))
                     {
                         context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
                         return;
                     }
+                    FileSpace.LastModifiedAt = DateTime.Now;
+                    mainDb.SaveChanges();
                     break;
                 case "POST":
                 case "LOCK":
                 case "UNLOCK":
-                    mainDb.Entry(fileNamespace)
+                    mainDb.Entry(FileSpace)
                         .Collection(fn => fn.ReadAccessUsers)
                         .Load();
-                    mainDb.Entry(fileNamespace)
+                    mainDb.Entry(FileSpace)
                         .Collection(fn => fn.WriteAccessUsers)
                         .Load();
-                    if (!(fileNamespace.ReadAccessUsers.Any(ui => ui.Name == name) && fileNamespace.WriteAccessUsers.Any(ui => ui.Name == name)))
+                    if (!(FileSpace.ReadAccessUsers.Any(ui => ui.Name == name) && FileSpace.WriteAccessUsers.Any(ui => ui.Name == name)))
                     {
                         context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
                         return;

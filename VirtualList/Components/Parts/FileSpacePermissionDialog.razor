@@ -1,0 +1,133 @@
+﻿@rendermode InteractiveServer
+
+@using VirtualList.Datas
+
+@inject MainDbContext mainDb
+
+<div style="position:fixed; margin: 0%; width: 100%; height: 100%; background: #00000070; z-index: 10;"></div>
+
+<FluentCard Style="position: fixed; width: auto; height: auto; margin: 100px auto auto 100px; z-index: 11;">
+    <FluentStack Orientation="Orientation.Vertical">
+        <!-- 啊我去了怎么要写这么多代码 -->
+        <h3>权限列表</h3>
+        <FluentStack Orientation="Orientation.Horizontal">
+            <span>要添加的用户：</span>
+            <FluentTextField @bind-Value="userToAdd" />
+            <FluentButton OnClick="AddUser">添加用户</FluentButton>
+        </FluentStack>
+        @if(!string.IsNullOrEmpty(addUserErrorMessage))
+        {
+            <p style="color: red">@addUserErrorMessage</p>
+        }
+        <FluentDataGrid Style="min-width: 400px" DisplayMode="DataGridDisplayMode.Table" TGridItem="string">
+            <FluentDataGridRow RowType="DataGridRowType.Header">
+                <FluentDataGridCell GridColumn="1">用户名</FluentDataGridCell>
+                <FluentDataGridCell GridColumn="2">权限</FluentDataGridCell>
+                <FluentDataGridCell GridColumn="3">操作</FluentDataGridCell>
+            </FluentDataGridRow>
+            @foreach(var i in users)
+            {
+                <FluentDataGridRow>
+                    <FluentDataGridCell GridColumn="1">@i.Name</FluentDataGridCell>
+                    <FluentDataGridCell GridColumn="2">
+                        <!-- 求求你了 不要在乎下面这两个CheckBox怎么跑起来的 谢谢 呜呜呜 -->
+                        @{
+                            CheckStatusHelper read = new() { Get = () => i.ReadableSpaces.Contains(fileSpace), Set = newStatus =>
+                                        {
+                                            if (newStatus && !i.ReadableSpaces.Contains(fileSpace))
+                                                i.ReadableSpaces.Add(fileSpace);
+                                            else if (!newStatus && i.ReadableSpaces.Contains(fileSpace))
+                                                i.ReadableSpaces.Remove(fileSpace);
+                                        } };
+                            CheckStatusHelper write = new() { Get = () => i.WriteableSpaces.Contains(fileSpace), Set = newStatus =>
+                                        {
+                                            if (newStatus && !i.WriteableSpaces.Contains(fileSpace))
+                                                i.WriteableSpaces.Add(fileSpace);
+                                            else if (!newStatus && i.WriteableSpaces.Contains(fileSpace))
+                                                i.WriteableSpaces.Remove(fileSpace);
+                                        } };
+                            
+                        }
+                        <FluentCheckbox Value="read.Value" ValueChanged="nv => read.Set(nv)">读取</FluentCheckbox>
+                        <FluentCheckbox Value="write.Value" ValueChanged="nv => write.Set(nv)">写入</FluentCheckbox>
+                    </FluentDataGridCell>
+                    <FluentDataGridCell GridColumn="3">
+                        <FluentButton OnClick="() =>
+                            {
+                                if(i.ReadableSpaces.Contains(fileSpace))
+                                    i.ReadableSpaces.Remove(fileSpace);
+                                if (i.WriteableSpaces.Contains(fileSpace))
+                                    i.WriteableSpaces.Remove(fileSpace);
+                                RefreshUsers();
+                            }">
+                                删除用户
+                        </FluentButton>
+                    </FluentDataGridCell>
+                </FluentDataGridRow>
+            }
+        </FluentDataGrid>
+        <FluentStack Orientation="Orientation.Horizontal">
+            <FluentButton OnClick="async () => await OnClose.InvokeAsync()">取消</FluentButton>
+            <FluentButton OnClick="async () =>
+                {
+                    mainDb.SaveChanges();
+                    await OnClose.InvokeAsync();
+                }">确定</FluentButton>
+        </FluentStack>
+    </FluentStack>
+</FluentCard>
+
+@code {
+    [Parameter]
+    public required Guid FileSpaceId { get; set; }
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    IEnumerable<UserInfo> users = [];
+    FileSpaceInfo fileSpace;
+    string userToAdd = "", addUserErrorMessage = "";
+
+    // M$你个大S13
+    class CheckStatusHelper
+    {
+        public required Func<bool> Get { get; init; }
+        public required Action<bool> Set { get; init; }
+        public bool Value { get => Get(); set => Set(value); }
+    }
+
+    protected override void OnInitialized()
+    {
+        fileSpace = mainDb.FileSpaces.Find(FileSpaceId) ?? throw new InvalidOperationException("文件空间不存在！");
+        mainDb.Entry(fileSpace)
+            .Collection(fs => fs.ReadAccessUsers)
+            .Load();
+        mainDb.Entry(fileSpace)
+            .Collection(fs => fs.WriteAccessUsers)
+            .Load();
+        RefreshUsers();
+        base.OnInitialized();
+    }
+
+    void RefreshUsers()
+    {
+        users = fileSpace.ReadAccessUsers.Union(fileSpace.WriteAccessUsers).OrderBy(user => user.Name);
+    }
+
+    void AddUser()
+    {
+        addUserErrorMessage = "";
+        var user = mainDb.Users.Find(userToAdd);
+        if(user is null)
+        {
+            addUserErrorMessage = "用户不存在！";
+            return;
+        }
+        if (users.Any(u => u.Name == user.Name))
+        {
+            addUserErrorMessage = "用户重复！";
+            return;
+        }
+        user.ReadableSpaces.Add(fileSpace);
+        RefreshUsers();
+    }
+}

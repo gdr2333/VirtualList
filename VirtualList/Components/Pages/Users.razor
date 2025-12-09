@@ -19,7 +19,7 @@
                 _ = RefreshUsers();
                 <h3>用户列表</h3>
                 <FluentStack Orientation="Orientation.Horizontal">
-                    <FluentButton Style="margin: 5px" OnClick="() => HaveNewUserPanel = true">添加用户</FluentButton>
+                    <FluentButton Style="margin: 5px" OnClick="() => HaveNewUserDialog = true">添加用户</FluentButton>
                     <FluentButton Style="margin: 5px" OnClick="DeleteSelectedUser">删除选定用户</FluentButton>
                 </FluentStack>
                 <FluentDataGrid Items="allUsers" @ref="grid">
@@ -28,9 +28,9 @@
                     <PropertyColumn Property="@(u => u.CreatedTime)" Title="注册时间" Sortable="true" />
                     <PropertyColumn Property="@(u => u.LastLogin)" Title="上次登录时间" Sortable="true" />
                 </FluentDataGrid>
-                @if (HaveNewUserPanel)
+                @if (HaveNewUserDialog)
                 {
-                    <NewUser OnClose="async () => { HaveNewUserPanel = false; await RefreshUsers(); }" />
+                    <NewUserDialog OnClose="async () => { HaveNewUserDialog = false; await RefreshUsers(); }" />
                 }
             }
             else
@@ -49,7 +49,7 @@
     UserInfo? thisUser;
     UserInfo? selectedUser = null;
     IQueryable<UserInfo> allUsers;
-    bool HaveNewUserPanel = false;
+    bool HaveNewUserDialog = false;
     FluentDataGrid<UserInfo> grid = new();
     ILogger logger;
 

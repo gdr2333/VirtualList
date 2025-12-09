@@ -6,6 +6,7 @@ using VirtualList.Datas;
 using VirtualList.Helpers;
 using VirtualList.Middlewares;
 using VirtualList.Services;
+using WebDav;
 using Yarp.ReverseProxy.Configuration;
 
 var conf = JsonSerializer.Deserialize<ConfigData>(File.ReadAllBytes("Config.json"))!;
@@ -57,6 +58,7 @@ builder.Services.AddAuthentication(oa =>
 builder.Services.AddTransient<MainDbContext>((sc) => new(builder.Configuration.GetConnectionString("MainContext")!, sc.GetService<ILoggerFactory>()!));
 
 builder.Services.AddSingleton(conf);
+builder.Services.AddSingleton(new WebDavClient());
 
 builder.Services.AddReverseProxy()
     .LoadFromMemory(

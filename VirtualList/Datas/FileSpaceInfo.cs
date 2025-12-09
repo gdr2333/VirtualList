@@ -2,7 +2,7 @@
 
 namespace VirtualList.Datas;
 
-public class FileNamespaceInfo
+public class FileSpaceInfo
 {
     [Key]
     public Guid Id { get; set; }

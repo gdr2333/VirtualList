@@ -1,0 +1,261 @@
+﻿@page "/fileSpaces"
+@rendermode InteractiveServer
+
+@using System.Security.Claims
+@using VirtualList.Datas
+
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject MainDbContext mainDb
+@inject ILoggerFactory loggerFactory
+@inject NavigationManager navigationManager
+
+<PageTitle>文件空间管理 - VirtualList Alpha</PageTitle>
+
+<AuthorizeView>
+    <Authorized>
+        <FluentStack Orientation="Orientation.Vertical">
+            <h3>文件管理</h3>
+            <FluentStack Orientation="Orientation.Horizontal">
+                <span>要添加的文件空间：</span>
+                <FluentTextField @bind-Value="spaceNameToAdd" />
+                <FluentButton OnClick="AddSpace">添加文件空间</FluentButton>
+            </FluentStack>
+            @if(!string.IsNullOrEmpty(addSpaceError))
+            {
+                <p style="color: red">@addSpaceError</p>
+            }
+            <!-- 淦，这次我们真的需要手动构建表格了 -->
+            <FluentDataGrid Style="min-width: 400px" DisplayMode="DataGridDisplayMode.Table" TGridItem="string">
+                <FluentDataGridRow RowType="DataGridRowType.Header">
+                    <FluentDataGridCell GridColumn=1
+                                        CellType="DataGridCellType.ColumnHeader"
+                                        @onclick="() => ChangeOrderBy(OrderBy.Name)">
+                        名称 @CalcOrderbyArrow(OrderBy.Name)
+                    </FluentDataGridCell>
+                    <FluentDataGridCell GridColumn=2
+                                        CellType="DataGridCellType.ColumnHeader"
+                                        @onclick="() => ChangeOrderBy(OrderBy.Owner)">
+                        拥有者 @CalcOrderbyArrow(OrderBy.Owner)
+                    </FluentDataGridCell>
+                    <FluentDataGridCell GridColumn=3
+                                        CellType="DataGridCellType.ColumnHeader">
+                        权限
+                    </FluentDataGridCell>
+                    <FluentDataGridCell GridColumn=4
+                                        CellType="DataGridCellType.ColumnHeader"
+                                        @onclick="() => ChangeOrderBy(OrderBy.CreatAt)">
+                        创建日期 @CalcOrderbyArrow(OrderBy.CreatAt)
+                    </FluentDataGridCell>
+                    <FluentDataGridCell GridColumn=5
+                                        CellType="DataGridCellType.ColumnHeader"
+                                        @onclick="() => ChangeOrderBy(OrderBy.LastModifiedAt)">
+                        上次更改日期 @CalcOrderbyArrow(OrderBy.LastModifiedAt)
+                    </FluentDataGridCell>
+                    <FluentDataGridCell GridColumn=6
+                                        CellType="DataGridCellType.ColumnHeader">
+                        操作
+                    </FluentDataGridCell>
+                </FluentDataGridRow>
+                @foreach (var i in FileSpaceInfos)
+                {
+                    <FluentDataGridRow>
+                        <FluentDataGridCell GridColumn="1">
+                            <a href="@($"/file/{i.Id}")">@i.Name</a>
+                        </FluentDataGridCell>
+                        <FluentDataGridCell GridColumn="2">
+                            @i.OwnerName
+                        </FluentDataGridCell>
+                        <FluentDataGridCell GridColumn="3">
+                            @CalcPermission(
+                                i.OwnerName == userName,
+                                thisUser.ReadableSpaces.Contains(i),
+                                thisUser.WriteableSpaces.Contains(i))
+                        </FluentDataGridCell>
+                        <FluentDataGridCell GridColumn="4">
+                            @i.CreatedAt.ToString("F")
+                        </FluentDataGridCell>
+                        <FluentDataGridCell GridColumn="5">
+                            @i.LastModifiedAt.ToString("F")
+                        </FluentDataGridCell>
+                        <FluentDataGridCell GridColumn="6">
+                            <FluentStack Orientation="Orientation.Horizontal">
+                                <FluentButton OnClick="() => { toDelete = i; haveDeleteConfirmDialog = true; }">删除</FluentButton>
+                                <FluentButton OnClick="() => { targetSpaceToChange = i.Id; haveChangePermDialog = true; }">更改权限</FluentButton>
+                            </FluentStack>
+                        </FluentDataGridCell>
+                    </FluentDataGridRow>
+                }
+            </FluentDataGrid>
+        </FluentStack>
+        @if(haveDeleteConfirmDialog)
+        {
+            <ConfirmDialog @ref="deleteConfirmWindow" Title="请确认" Message="确认要删除文件空间吗？" OnClose="OnConfirmDeleteWindowClose" />
+        }
+        @if(haveChangePermDialog)
+        {
+            <FileSpacePermissionDialog FileSpaceId="targetSpaceToChange" OnClose="() => haveChangePermDialog = false" />
+        }
+    </Authorized>
+    <NotAuthorized>
+        <a href="/login">请先登录。</a>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    IEnumerable<FileSpaceInfo> FileSpaceInfos = [];
+    enum OrderBy
+    {
+        None,
+        Name,
+        Owner,
+        CreatAt,
+        LastModifiedAt
+    }
+    OrderBy orderBy = OrderBy.None;
+    bool orderByDesc = false;
+    ILogger logger;
+    UserInfo? thisUser;
+    string userName = "";
+    bool haveDeleteConfirmDialog = false, haveChangePermDialog = false;
+    Guid targetSpaceToChange;
+    ConfirmDialog deleteConfirmWindow = new();
+    FileSpaceInfo? toDelete = null;
+    string spaceNameToAdd = "", addSpaceError = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        logger = loggerFactory.CreateLogger("用户管理");
+        userName = (await AuthenticationStateProvider
+            .GetAuthenticationStateAsync())
+            .User.FindFirstValue(ClaimTypes.Name) ?? "";
+        thisUser = mainDb.Users.Find(userName);
+        if(thisUser is not null)
+        {
+            mainDb.Entry(thisUser).Collection(u => u.OwnNamespaces).Load();
+            mainDb.Entry(thisUser).Collection(u => u.ReadableSpaces).Load();
+            mainDb.Entry(thisUser).Collection(u => u.WriteableSpaces).Load();
+            RefreshList();
+        }
+    }
+
+    void ChangeOrderBy(OrderBy to)
+    {
+        if(orderBy == to)
+        {
+            orderByDesc = !orderByDesc;
+        }
+        else
+        {
+            orderBy = to;
+            orderByDesc = orderBy switch
+            {
+                OrderBy.CreatAt or OrderBy.LastModifiedAt => true,
+                _ => false
+            };
+        }
+        RefreshList();
+    }
+
+    string CalcOrderbyArrow(OrderBy to)
+    {
+        if (orderBy != to)
+            return "";
+        return orderByDesc ? "↓" : "↑";
+    }
+
+    string CalcPermission(bool own, bool read, bool write)
+    {
+        if (own)
+            return "所有者";
+        else if (read && write)
+            return "读写";
+        else if (read)
+            return "只读";
+        else if (write)
+            return "只写（很可能是错误）";
+        return "";
+    }
+
+    void RefreshList()
+    {
+        if (thisUser is null)
+            return;
+        var namespaces = thisUser.OwnNamespaces.Union(thisUser.ReadableSpaces).Union(thisUser.WriteableSpaces);
+        FileSpaceInfos = orderBy switch
+        {
+            OrderBy.None => namespaces,
+            OrderBy.Name => orderByDesc switch
+            {
+                true => from fn in namespaces
+                        orderby fn.Name descending
+                        select fn,
+                false => from fn in namespaces
+                         orderby fn.Name
+                         select fn
+            },
+            OrderBy.Owner => orderByDesc switch
+            {
+                true => from fn in namespaces
+                        orderby fn.OwnerName descending
+                        select fn,
+                false => from fn in namespaces
+                         orderby fn.OwnerName
+                         select fn
+            },
+            OrderBy.CreatAt => orderByDesc switch
+            {
+                true => from fn in namespaces
+                        orderby fn.CreatedAt descending
+                        select fn,
+                false => from fn in namespaces
+                         orderby fn.CreatedAt
+                         select fn
+            },
+            OrderBy.LastModifiedAt => orderByDesc switch
+            {
+                true => from fn in namespaces
+                        orderby fn.LastModifiedAt descending
+                        select fn,
+                false => from fn in namespaces
+                         orderby fn.LastModifiedAt
+                         select fn
+            },
+            _ => []
+        };
+    }
+
+    void OnConfirmDeleteWindowClose()
+    {
+        haveDeleteConfirmDialog = false;
+        if (deleteConfirmWindow.Confirmed && toDelete is not null)
+        {
+#warning TODO：真的删除目录
+            mainDb.FileSpaces.Remove(toDelete);
+            toDelete = null;
+            RefreshList();
+        }
+    }
+
+    void AddSpace()
+    {
+        addSpaceError = "";
+        if(string.IsNullOrEmpty(spaceNameToAdd))
+        {
+            addSpaceError = "要添加的文件空间名称为空！";
+            return;
+        }
+        var space = new FileSpaceInfo()
+            {
+                Name = spaceNameToAdd,
+                CreatedAt = DateTime.Now,
+                LastModifiedAt = DateTime.Now,
+                Owner = thisUser,
+                OwnerName = thisUser.Name
+            };
+        mainDb.FileSpaces.Add(space);
+        mainDb.SaveChanges();
+        RefreshList();
+        spaceNameToAdd = "";
+    }
+}

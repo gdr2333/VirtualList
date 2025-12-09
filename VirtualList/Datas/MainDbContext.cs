@@ -5,7 +5,7 @@ namespace VirtualList.Datas;
 public class MainDbContext(string connectionString, ILoggerFactory loggerFactory) : DbContext
 {
     public DbSet<UserInfo> Users { get; set; }
-    public DbSet<FileNamespaceInfo> FileNamespaces { get; set; }
+    public DbSet<FileSpaceInfo> FileSpaces { get; set; }
     public DbSet<SharedFileInfo> SharedFiles { get; set; }
     public DbSet<LoginInfo> LoginInfos { get; set; }
 
@@ -18,16 +18,16 @@ public class MainDbContext(string connectionString, ILoggerFactory loggerFactory
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<FileNamespaceInfo>()
+        modelBuilder.Entity<FileSpaceInfo>()
             .HasOne(e => e.Owner)
             .WithMany(e => e.OwnNamespaces)
             .HasForeignKey(e => e.OwnerName)
             .IsRequired();
-        modelBuilder.Entity<FileNamespaceInfo>()
+        modelBuilder.Entity<FileSpaceInfo>()
             .HasMany(e => e.ReadAccessUsers)
-            .WithMany(e => e.ReadableNamespaces);
-        modelBuilder.Entity<FileNamespaceInfo>()
+            .WithMany(e => e.ReadableSpaces);
+        modelBuilder.Entity<FileSpaceInfo>()
             .HasMany(e => e.WriteAccessUsers)
-            .WithMany(e => e.WriteableNamespaces);
+            .WithMany(e => e.WriteableSpaces);
     }
 }

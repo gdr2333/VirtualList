@@ -13,7 +13,7 @@ public class UserInfo
     public DateTime LastLogin { get; set; } 
     public ICollection<LoginInfo> LoginInfos { get; set; } = new List<LoginInfo>();
     public ICollection<SharedFileInfo> SharedFiles { get; set; } = new List<SharedFileInfo>();
-    public ICollection<FileNamespaceInfo> OwnNamespaces { get; set; } = new List<FileNamespaceInfo>();
-    public ICollection<FileNamespaceInfo> ReadableNamespaces { get; set; } = new List<FileNamespaceInfo>();
-    public ICollection<FileNamespaceInfo> WriteableNamespaces { get; set; } = new List<FileNamespaceInfo>();
+    public ICollection<FileSpaceInfo> OwnNamespaces { get; set; } = new List<FileSpaceInfo>();
+    public ICollection<FileSpaceInfo> ReadableSpaces { get; set; } = new List<FileSpaceInfo>();
+    public ICollection<FileSpaceInfo> WriteableSpaces { get; set; } = new List<FileSpaceInfo>();
 }
