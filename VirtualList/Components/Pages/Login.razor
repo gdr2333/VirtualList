@@ -9,6 +9,7 @@
 @inject MainDbContext mainDb
 @inject ILoggerFactory loggerFactory
 @inject IJSRuntime js
+@inject NavigationManager navigationManager
 
 <PageTitle>登录 - VirtualList</PageTitle>
 
@@ -65,5 +66,6 @@
         mainDb.SaveChanges();
         logger.LogInformation($"用户{UserName}登陆成功");
         await js.InvokeVoidAsync("WriteCookie.WriteCookie", "Token", Convert.ToBase64String(token), DateTime.Now.AddMonths(1));
+        navigationManager.NavigateTo("/", true);
     }
 }

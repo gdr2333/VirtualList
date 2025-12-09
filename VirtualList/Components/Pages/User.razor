@@ -7,8 +7,9 @@
 @using VirtualList.Datas
 @using VirtualList.Helpers
 
-@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject AuthenticationStateProvider authenticationStateProvider
 @inject MainDbContext mainDb
+@inject NavigationManager navigationManager
 
 <PageTitle>用户信息 - VirtualList</PageTitle>
 
@@ -65,7 +66,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        userName = (await AuthenticationStateProvider
+        userName = (await authenticationStateProvider
             .GetAuthenticationStateAsync())
             .User.FindFirstValue(ClaimTypes.Name) ?? "";
         userInfo = mainDb.Users.Find(userName);
@@ -93,6 +94,7 @@
         mainDb.LoginInfos.RemoveRange(from loginInfo in mainDb.LoginInfos where loginInfo.User == userInfo select loginInfo);
         mainDb.SaveChanges();
         passwordChanged = true;
+        navigationManager.NavigateTo("/login", true);
         return;
     }
 }
