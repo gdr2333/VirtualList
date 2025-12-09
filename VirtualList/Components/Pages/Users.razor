@@ -6,6 +6,7 @@
 
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject MainDbContext mainDb
+@inject ILoggerFactory loggerFactory
 
 <PageTitle>用户管理 - VirtualList</PageTitle>
 
@@ -50,9 +51,11 @@
     IQueryable<UserInfo> allUsers;
     bool HaveNewUserPanel = false;
     FluentDataGrid<UserInfo> grid = new();
+    ILogger logger;
 
     protected override async Task OnInitializedAsync()
     {
+        logger = loggerFactory.CreateLogger("用户管理");
         userName = (await AuthenticationStateProvider
             .GetAuthenticationStateAsync())
             .User.FindFirstValue(ClaimTypes.Name) ?? "";
@@ -68,8 +71,11 @@
 
     async Task DeleteSelectedUser()
     {
-        if(selectedUser != null)
+        if (selectedUser != null)
+        {
             mainDb.Users.Remove(selectedUser);
+            logger.LogInformation($"删除了用户{selectedUser.Name}");
+        }
         mainDb.SaveChanges();
         selectedUser = null;
         await RefreshUsers();

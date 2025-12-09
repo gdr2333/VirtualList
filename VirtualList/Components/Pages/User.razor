@@ -10,6 +10,7 @@
 @inject AuthenticationStateProvider authenticationStateProvider
 @inject MainDbContext mainDb
 @inject NavigationManager navigationManager
+@inject ILoggerFactory loggerFactory
 
 <PageTitle>用户信息 - VirtualList</PageTitle>
 
@@ -61,11 +62,13 @@
     string userName = "";
     UserInfo? userInfo;
     bool passwordChanged = false, wrongOldPassword = false, newPasswordNotSame = false;
+    ILogger logger;
 
     string oldPassword = "", newPassword = "", newPassword2 = "";
 
     protected override async Task OnInitializedAsync()
     {
+        logger = loggerFactory.CreateLogger("用户页面");
         userName = (await authenticationStateProvider
             .GetAuthenticationStateAsync())
             .User.FindFirstValue(ClaimTypes.Name) ?? "";
@@ -94,6 +97,7 @@
         mainDb.LoginInfos.RemoveRange(from loginInfo in mainDb.LoginInfos where loginInfo.User == userInfo select loginInfo);
         mainDb.SaveChanges();
         passwordChanged = true;
+        logger.LogInformation($"用户{userName}更改了新密码。");
         navigationManager.NavigateTo("/login", true);
         return;
     }
