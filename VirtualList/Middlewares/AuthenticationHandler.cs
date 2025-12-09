@@ -20,7 +20,7 @@ public partial class AuthenticationHandler(MainDbContext mainDb, ILoggerFactory 
                 if (cookie?.StartsWith("Token=") ?? false)
                 {
                     var loginInfo = mainDb.LoginInfos.Find(Convert.FromBase64String(cookie[6..].Trim()));
-                    if (loginInfo != null && loginInfo.ExpiresAt > DateTime.Now)
+                    if (loginInfo is not null && loginInfo.ExpiresAt > DateTime.Now)
                     {
                         mainDb.Entry(loginInfo)
                             .Reference(li => li.User)
@@ -28,6 +28,11 @@ public partial class AuthenticationHandler(MainDbContext mainDb, ILoggerFactory 
                         if (logger.IsEnabled(LogLevel.Debug))
                             logger.LogDebug($"对{loginInfo.User.Name}验证成功，使用Cookie:Token");
                         return AuthenticateResult.Success(new(new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Name, loginInfo.User.Name)], "cookie")) , "cookie"));
+                    }
+                    else if(loginInfo is not null && loginInfo.ExpiresAt < DateTime.Now)
+                    {
+                        mainDb.LoginInfos.Remove(loginInfo);
+                        mainDb.SaveChanges();
                     }
                 }
         // 只对WebDAV路径开放Basic认证
