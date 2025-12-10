@@ -87,19 +87,20 @@
                 }
             </FluentDataGrid>
         </FluentStack>
-        @if(haveDeleteConfirmDialog)
-        {
-            <ConfirmDialog @ref="deleteConfirmWindow" Title="请确认" Message="确认要删除文件空间吗？" OnClose="OnConfirmDeleteWindowClose" />
-        }
-        @if(haveChangePermDialog)
-        {
-            <FileSpacePermissionDialog FileSpaceId="targetSpaceToChange" OnClose="() => haveChangePermDialog = false" />
-        }
     </Authorized>
     <NotAuthorized>
         <a href="/login">请先登录。</a>
     </NotAuthorized>
 </AuthorizeView>
+
+@if (haveDeleteConfirmDialog)
+{
+    <ConfirmDialog @ref="deleteConfirmWindow" Title="请确认" Message="确认要删除文件空间吗？" OnClose="OnConfirmDeleteWindowClose" />
+}
+@if (haveChangePermDialog)
+{
+    <FileSpacePermissionDialog FileSpaceId="targetSpaceToChange" OnClose="() => haveChangePermDialog = false" />
+}
 
 @code {
     IEnumerable<FileSpaceInfo> FileSpaceInfos = [];
@@ -233,6 +234,7 @@
 #warning TODO：真的删除目录
             mainDb.FileSpaces.Remove(toDelete);
             toDelete = null;
+            mainDb.SaveChanges();
             RefreshList();
         }
     }
