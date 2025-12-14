@@ -30,14 +30,14 @@
             <FluentStack Orientation="Orientation.Vertical">
                 <h3>文件列表</h3>
                 <FluentStack Orientation="Orientation.Horizontal">
-                    <FluentInputFile OnInputFileChange="LoadFiles" Multiple="true">上传文件</FluentInputFile>
+                    <FluentInputFile Disabled="@(!writeable)" OnInputFileChange="LoadFiles" Multiple="true">上传文件</FluentInputFile>
                     <span>新文件夹名称：</span>
                     <FluentTextField @bind-Value="newFolderName"/>
                     @if(!string.IsNullOrEmpty(newFolderError))
                     {
                         <p style="color: red">@newFolderError</p>
                     }
-                    <FluentButton OnClick="NewFolder">新建文件夹</FluentButton>
+                    <FluentButton Disabled="@(!writeable)" OnClick="NewFolder">新建文件夹</FluentButton>
                     <FluentCheckbox @bind-Value="displayHiddenItem">显示隐藏文件</FluentCheckbox>
                 </FluentStack>
                 <FluentDataGrid Style="min-width: 400px" DisplayMode="DataGridDisplayMode.Table" TGridItem="string">
