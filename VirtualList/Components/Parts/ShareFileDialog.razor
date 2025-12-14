@@ -1,0 +1,62 @@
+﻿@rendermode InteractiveServer
+
+@using Microsoft.FluentUI.AspNetCore.Components.Extensions
+@using VirtualList.Datas
+
+@inject ILoggerFactory loggerFactory
+@inject NavigationManager navigationManager
+
+<div style="position:fixed; left: 0px; top: 0px; margin: 0%; width: 100%; height: 100%; background: #00000070; z-index: 10;"></div>
+
+<FluentCard Style="position: fixed; width: auto; height: auto; left: 20%; top: 20%; z-index: 11;">
+    <FluentStack Orientation="Orientation.Vertical">
+        <h3>分享文件</h3>
+        <p>到期日期：</p>
+        <FluentCheckbox @bind-Value="noLimit">无期限</FluentCheckbox>
+        <FluentStack Orientation="Orientation.Vertical">
+            <FluentCalendar DisabledDateFunc="d => d < DateTime.Now.AddDays(-1)" Value="@toDate.ToDateTime()" ValueChanged="@(e => toDate = e.ToDateOnly())" Disabled="@(noLimit)" />
+            <FluentTimePicker Value="@toTime.ToDateTime()" ValueChanged="@(e => toTime = e.ToTimeOnly())" Disabled="@(noLimit)"/>
+        </FluentStack>
+        <FluentButton OnClick="Create" Disabled="@(done)" Appearance="Appearance.Accent">生成</FluentButton>
+        @if(done)
+        {
+            <p>您的分享链接是：@($"{navigationManager.BaseUri}share/{shareCode}")</p>
+        }
+        <FluentButton OnClick="async () => await OnClose.InvokeAsync()">关闭</FluentButton>
+    </FluentStack>
+</FluentCard>
+
+@code {
+    [Parameter]
+    public string RealPath { get; set; }
+    [Parameter]
+    public FileSpaceInfo FileSpace { get; set; }
+    [Parameter]
+    public string UserName { get; set; }
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+    [Parameter]
+    public MainDbContext DbContext { get; set; }
+    bool noLimit = false;
+    DateOnly toDate = ((DateTime?)DateTime.Now).ToDateOnly();
+    TimeOnly toTime = ((DateTime?)DateTime.Now).ToTimeOnly();
+    string shareCode = "";
+    bool done = false;
+
+    void Create()
+    {
+        var shareInfo = new SharedFileInfo()
+            {
+                CreatedAt = DateTime.Now,
+                FileSpace = FileSpace,
+                ExpiresAt = noLimit ? DateTime.MaxValue : new(toDate, toTime),
+                UserName = UserName,
+                RealPath = RealPath,
+                ShareId = Guid.NewGuid()
+            };
+        shareCode = shareInfo.ShareId.ToString();
+        DbContext.SharedFiles.Add(shareInfo);
+        DbContext.SaveChanges();
+        done = true;
+    }
+}

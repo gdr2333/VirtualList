@@ -34,8 +34,9 @@ public class WebDavServerService : IHostedService
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        _serverProcess.Close();
-        if(!_serverProcess.HasExited)
+        if (!_serverProcess.HasExited)
+            _serverProcess.Close();
+        if (!_serverProcess.HasExited)
             await _serverProcess.WaitForExitAsync(cancellationToken);
     }
 }

@@ -11,10 +11,10 @@ using Yarp.ReverseProxy.Configuration;
 
 var conf = JsonSerializer.Deserialize<ConfigData>(File.ReadAllBytes("Config.json"))!;
 
-if(!Directory.Exists(conf.StroageAt))
-    Directory.CreateDirectory(conf.StroageAt);
+if(!Directory.Exists(conf.StorageAt))
+    Directory.CreateDirectory(conf.StorageAt);
 
-File.WriteAllText("DavServerConfig-AutoGen.yaml", $"address: 127.0.0.1\nport: {conf.DavPort}\ntls: false\nprefix: /webdav/\ndebug: false\nnoSniff: false\nbehindProxy: true\ndirectory: {conf.StroageAt}\npermissions: CRUD\nrules: []\nrulesBehavior: overwrite\nlog:\n  format: console\n  colors: true\n  outputs:\n  - stderr\nnoPassword: true");
+File.WriteAllText("DavServerConfig-AutoGen.yaml", $"address: 127.0.0.1\nport: {conf.DavPort}\ntls: false\nprefix: /webdav/\ndebug: false\nnoSniff: false\nbehindProxy: true\ndirectory: {conf.StorageAt}\npermissions: CRUD\nrules: []\nrulesBehavior: overwrite\nlog:\n  format: console\n  colors: true\n  outputs:\n  - stderr\nnoPassword: true");
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -71,6 +71,16 @@ builder.Services.AddReverseProxy()
             {
                 Path = "/webdav/{**catch-all}"
             },
+        },
+        // MAGIC DO NOT TOUCH
+        new()
+        {
+            RouteId = "share-route",
+            ClusterId = "main-cluster",
+            Match = new()
+            {
+                Path = "/share/{**catch-all}"
+            },
         }
         ],
         [
@@ -112,9 +122,10 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseAntiforgery();
 
 app.UseWebDav();
+// 必须在WebDAV之后执行，否则会被鉴权拦下来
+app.UseFileShare();
 app.MapReverseProxy();
 
 app.MapStaticAssets();

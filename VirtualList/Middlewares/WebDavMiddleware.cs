@@ -107,7 +107,7 @@ location / {
         context.Request.Headers["X-Real-IP"] = context.Connection.RemoteIpAddress?.ToString();
         context.Request.Headers["REMOTE-HOST"] = context.Connection.RemoteIpAddress?.ToString();
         context.Request.Headers["X-Forwarded-For"] = $"{context.Connection.RemoteIpAddress?.ToString()}, 127.0.0.1";
-        context.Request.Headers.Host = config.DavPort.ToString();
+        context.Request.Headers.Host = $"127.0.0.1:{config.DavPort}";
         var dest = context.Request.Headers["Destination"].ToString();
         context.Request.Headers["Destination"] = dest[(dest.IndexOf('/') + 1)..];
         // 让我们把剩下的代理流程交给YARP

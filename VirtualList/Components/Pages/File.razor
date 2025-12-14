@@ -9,7 +9,6 @@
 
 @inject AuthenticationStateProvider authenticationStateProvider
 @inject MainDbContext mainDb
-@inject ILoggerFactory loggerFactory
 @inject WebDavClient davClient
 @inject IToastService toastService
 @inject ConfigData config
@@ -96,14 +95,20 @@
                             <FluentDataGridCell GridColumn="4">@(file.ContentLength is not null ? ByteToXiB((double)file.ContentLength.Value) : "")</FluentDataGridCell>
                             <FluentDataGridCell GridColumn="5">
                                 @{
-                                    string fileId = $"/webdav/{fileSpaceId}/{(folderPath is not null ? folderPath.TrimEnd('/') + '/' : string.Empty)}{file.DisplayName}";
+                                    string filePath = $"/webdav/{fileSpaceId}/{(folderPath is not null ? folderPath.TrimEnd('/') + '/' : string.Empty)}{file.DisplayName}";
                                 }
-                                <FluentButton OnClick="() => Delete(fileId)" Disabled="@(!writeable)">删除</FluentButton>
+                                <FluentButton OnClick="() => Delete(filePath)" Disabled="@(!writeable)">删除</FluentButton>
+                                <FluentButton OnClick="() => { shareFile = file.DisplayName; displayShare = true; }">分享</FluentButton>
                             </FluentDataGridCell>
                         </FluentDataGridRow>
                     }
                 </FluentDataGrid>
             </FluentStack>
+            @if(displayShare)
+            {
+                string filePath = $"/webdav/{fileSpaceId}/{(folderPath is not null ? folderPath.TrimEnd('/') + '/' : string.Empty)}{shareFile}";
+                <ShareFileDialog FileSpace="fileSpace" RealPath="@filePath" UserName="@userName" DbContext="mainDb" OnClose="() => displayShare = false"/>
+            }
         }
     </Authorized>
     <NotAuthorized>
@@ -124,6 +129,9 @@
     bool readable, writeable, own, fileSpaceNotExists;
     bool displayHiddenItem;
 
+    bool displayShare = false;
+    string shareFile = "";
+
     string newFolderName = "", newFolderError = "";
 
     WebDavResource[] folders = [], files = [];
@@ -137,6 +145,8 @@
     }
     OrderBy orderBy = OrderBy.Name;
     bool orderByDesc = false;
+
+    string CalcPath(WebDavResource file) => $"/webdav/{fileSpaceId}/{(folderPath is not null ? folderPath.TrimEnd('/') + '/' : string.Empty)}{file.DisplayName}";
 
     async Task NewFolder()
     {
@@ -160,7 +170,7 @@
     async Task LoadFiles(InputFileChangeEventArgs e)
     {
         foreach (var i in e.GetMultipleFiles())
-            if (System.IO.File.Exists($"{config.StroageAt}{Path.DirectorySeparatorChar}{fileSpaceId}{Path.DirectorySeparatorChar}{(folderPath is null ? "" : folderPath + '/')}{Path.DirectorySeparatorChar}{i.Name}"))
+            if (System.IO.File.Exists($"{config.StorageAt}{Path.DirectorySeparatorChar}{fileSpaceId}{Path.DirectorySeparatorChar}{(folderPath is null ? "" : folderPath + '/')}{Path.DirectorySeparatorChar}{i.Name}"))
             {
                 toastService.ShowError($"有同名文件，请删除后再试");
                 return;
@@ -186,7 +196,6 @@
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        logger = loggerFactory.CreateLogger("用户管理");
         userName = (await authenticationStateProvider
             .GetAuthenticationStateAsync())
             .User.FindFirstValue(ClaimTypes.Name) ?? "";
@@ -345,6 +354,6 @@
             3 => "GiB",
             4 => "TiB"
         };
-        return $"{size} {unit}";
+        return $"{size:.2} {unit}";
     }
 }
