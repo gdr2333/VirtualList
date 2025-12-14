@@ -16,4 +16,6 @@ VirtualList是一个配置极为简单的文件共享服务器。
 <br/>
 [YARP项目](https://dotnet.github.io/yarp/index.html)提供了本项目所需的，.NET内部的反向代理。
 <br/>
-[FluentUI Blazor项目](https://www.fluentui-blazor.net)为本项目提供了UI控件库
+[skazantsev的WebDavClient项目](https://github.com/skazantsev/WebDavClient)为本项目提供了WebDAV客户端。
+<br/>
+[FluentUI Blazor项目](https://www.fluentui-blazor.net)为本项目提供了UI控件库。
