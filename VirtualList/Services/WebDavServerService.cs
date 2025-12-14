@@ -13,14 +13,14 @@ public class WebDavServerService : IHostedService
         {
             PlatformID.Unix => RuntimeInformation.ProcessArchitecture switch
             {
-                Architecture.X64 => "Native/WebDAV-Linux-AMD64/webdav",
-                Architecture.Arm64 => "Native/WebDAV-Linux-ARM64/webdav",
+                Architecture.X64 => "webdav-amd64-linux",
+                Architecture.Arm64 => "webdav-arm64-linux",
                 _ => throw new NotImplementedException(),
             },
             PlatformID.Win32NT => RuntimeInformation.ProcessArchitecture switch
             {
-                Architecture.X64 => "Native/WebDAV-Windows-AMD64/webdav",
-                Architecture.Arm64 => "Native/WebDAV-Windows-ARM64/webdav",
+                Architecture.X64 => "webdav-amd64-win.exe",
+                Architecture.Arm64 => "webdav-arm64-win.exe",
                 _ => throw new NotImplementedException(),
             },
             _ => throw new NotImplementedException(),
