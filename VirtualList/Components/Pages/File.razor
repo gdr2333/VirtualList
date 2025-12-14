@@ -1,0 +1,350 @@
+﻿@page "/file/{fileSpaceId1}/{**folderPath}"
+@rendermode InteractiveServer
+<!-- 查了半天错误发现是没开@rendermode InteractiveServer -->
+
+@using System.Security.Claims
+@using System.Text.Encodings.Web
+@using VirtualList.Datas
+@using WebDav
+
+@inject AuthenticationStateProvider authenticationStateProvider
+@inject MainDbContext mainDb
+@inject ILoggerFactory loggerFactory
+@inject WebDavClient davClient
+@inject IToastService toastService
+@inject ConfigData config
+
+<FluentToastProvider MaxToastCount="10" />
+<AuthorizeView>
+    <Authorized>
+        @if(fileSpaceNotExists)
+        {
+            <p>404 - 文件空间不存在。</p>
+        }
+        else if(!readable)
+        {
+            <p>403 - 你没有访问权限。</p>
+        }
+        else
+        {
+            <FluentStack Orientation="Orientation.Vertical">
+                <h3>文件列表</h3>
+                <FluentStack Orientation="Orientation.Horizontal">
+                    <FluentInputFile OnInputFileChange="LoadFiles" Multiple="true">上传文件</FluentInputFile>
+                    <span>新文件夹名称：</span>
+                    <FluentTextField @bind-Value="newFolderName"/>
+                    @if(!string.IsNullOrEmpty(newFolderError))
+                    {
+                        <p style="color: red">@newFolderError</p>
+                    }
+                    <FluentButton OnClick="NewFolder">新建文件夹</FluentButton>
+                    <FluentCheckbox @bind-Value="displayHiddenItem">显示隐藏文件</FluentCheckbox>
+                </FluentStack>
+                <FluentDataGrid Style="min-width: 400px" DisplayMode="DataGridDisplayMode.Table" TGridItem="string">
+                    <FluentDataGridRow RowType="DataGridRowType.Header">
+                        <FluentDataGridCell GridColumn=1
+                                            CellType="DataGridCellType.ColumnHeader"
+                                            @onclick="() => ChangeOrderBy(OrderBy.Name)">
+                            名称 @CalcOrderbyArrow(OrderBy.Name)
+                        </FluentDataGridCell>
+                        <FluentDataGridCell GridColumn=2
+                                            CellType="DataGridCellType.ColumnHeader"
+                                            @onclick="() => ChangeOrderBy(OrderBy.CreatAt)">
+                            创建日期 @CalcOrderbyArrow(OrderBy.CreatAt)
+                        </FluentDataGridCell>
+                        <FluentDataGridCell GridColumn=3
+                                            CellType="DataGridCellType.ColumnHeader"
+                                            @onclick="() => ChangeOrderBy(OrderBy.LastModifiedAt)">
+                            上次更改日期 @CalcOrderbyArrow(OrderBy.LastModifiedAt)
+                        </FluentDataGridCell>
+                        <FluentDataGridCell GridColumn="4"
+                                            CellType="DataGridCellType.ColumnHeader"
+                                            @onclick="() => ChangeOrderBy(OrderBy.Size)">
+                            文件大小 @CalcOrderbyArrow(OrderBy.Size)
+                         </FluentDataGridCell>
+                        <FluentDataGridCell GridColumn=5
+                                            CellType="DataGridCellType.ColumnHeader">
+                            操作
+                        </FluentDataGridCell>
+                    </FluentDataGridRow>
+                    @foreach(var folder in folders)
+                    {
+                        <FluentDataGridRow>
+                            <FluentDataGridCell GridColumn="1">
+                                <a href=@($"/file/{fileSpaceId}/{(folderPath is not null ? folderPath.TrimEnd('/') + '/' : string.Empty)}{UrlEncoder.Default.Encode(folder.DisplayName)}")>@folder.DisplayName</a>
+                            </FluentDataGridCell>
+                            <FluentDataGridCell GridColumn="2">@folder.CreationDate?.ToString("F")</FluentDataGridCell>
+                            <FluentDataGridCell GridColumn="3">@folder.LastModifiedDate?.ToString("F")</FluentDataGridCell>
+                            <FluentDataGridCell GridColumn="5">
+                                <FluentStack Orientation="Orientation.Horizontal">
+                                    @{
+                                        string folderId = $"/webdav/{fileSpaceId}/{(folderPath is not null ? folderPath.TrimEnd('/') + '/' : string.Empty)}";
+                                    }
+                                    <FluentButton OnClick="() => Delete(folderId)" Disabled="@(!writeable)">删除</FluentButton>
+                                </FluentStack>
+                            </FluentDataGridCell>
+                        </FluentDataGridRow>
+                    }
+                    @foreach(var file in files)
+                    {
+                        <FluentDataGridRow>
+                            <FluentDataGridCell GridColumn="1">
+                                <a target="_blank" href=@($"/webdav/{fileSpaceId}/{(folderPath is not null ? folderPath.TrimEnd('/') + '/' : string.Empty)}{UrlEncoder.Default.Encode(file.DisplayName)}")>@file.DisplayName</a>
+                            </FluentDataGridCell>
+                            <FluentDataGridCell GridColumn="2">@file.CreationDate?.ToString("F")</FluentDataGridCell>
+                            <FluentDataGridCell GridColumn="3">@file.LastModifiedDate?.ToString("F")</FluentDataGridCell>
+                            <FluentDataGridCell GridColumn="4">@(file.ContentLength is not null ? ByteToXiB((double)file.ContentLength.Value) : "")</FluentDataGridCell>
+                            <FluentDataGridCell GridColumn="5">
+                                @{
+                                    string fileId = $"/webdav/{fileSpaceId}/{(folderPath is not null ? folderPath.TrimEnd('/') + '/' : string.Empty)}{file.DisplayName}";
+                                }
+                                <FluentButton OnClick="() => Delete(fileId)" Disabled="@(!writeable)">删除</FluentButton>
+                            </FluentDataGridCell>
+                        </FluentDataGridRow>
+                    }
+                </FluentDataGrid>
+            </FluentStack>
+        }
+    </Authorized>
+    <NotAuthorized>
+        <p>请先<a href="/login">登录</a></p>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    [Parameter]
+    public string fileSpaceId1 { get => fileSpaceId.ToString(); set => fileSpaceId = new(value); }
+    [Parameter]
+    public string folderPath { get; set; } = "";
+    Guid fileSpaceId;
+    UserInfo user;
+    string userName;
+    ILogger logger;
+    FileSpaceInfo? fileSpace;
+    bool readable, writeable, own, fileSpaceNotExists;
+    bool displayHiddenItem;
+
+    string newFolderName = "", newFolderError = "";
+
+    WebDavResource[] folders = [], files = [];
+
+    enum OrderBy
+    {
+        Name,
+        CreatAt,
+        LastModifiedAt,
+        Size
+    }
+    OrderBy orderBy = OrderBy.Name;
+    bool orderByDesc = false;
+
+    async Task NewFolder()
+    {
+        newFolderName = newFolderName.Trim();
+        newFolderError = "";
+        if(string.IsNullOrEmpty(newFolderName))
+        {
+            newFolderError = "文件夹名称为空！";
+            return;
+        }
+        else if(folders.Any(f => f.DisplayName == newFolderName))
+        {
+            newFolderError = "文件夹名称重复！";
+            return;
+        }
+        await davClient.Mkcol($"/webdav/{fileSpaceId}/{(folderPath is null ? "" : folderPath + '/')}{newFolderName}");
+        await RefreshList();
+        return;
+    }
+
+    async Task LoadFiles(InputFileChangeEventArgs e)
+    {
+        foreach (var i in e.GetMultipleFiles())
+            if (System.IO.File.Exists($"{config.StroageAt}{Path.DirectorySeparatorChar}{fileSpaceId}{Path.DirectorySeparatorChar}{(folderPath is null ? "" : folderPath + '/')}{Path.DirectorySeparatorChar}{i.Name}"))
+            {
+                toastService.ShowError($"有同名文件，请删除后再试");
+                return;
+            }
+        List<Task> tsks = [];
+        foreach (var i in e.GetMultipleFiles())
+        {
+            tsks.Add(davClient.PutFile($"/webdav/{fileSpaceId}/{(folderPath is null ? "" : folderPath + '/')}{i.Name}", i.OpenReadStream(long.MaxValue)));
+        }
+        foreach (var tsk in tsks)
+            await tsk;
+        await RefreshList();
+    }
+
+    async Task Delete(string address)
+    {
+        var res = await davClient.Delete(address);
+        if (!res.IsSuccessful)
+            toastService.ShowError($"删除失败！WebDAV {res.StatusCode}：{res.Description}");
+        await RefreshList();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        logger = loggerFactory.CreateLogger("用户管理");
+        userName = (await authenticationStateProvider
+            .GetAuthenticationStateAsync())
+            .User.FindFirstValue(ClaimTypes.Name) ?? "";
+        user = mainDb.Users.Find(userName)!;
+        mainDb.Entry(user)
+            .Collection(u => u.OwnNamespaces)
+            .Load();
+        mainDb.Entry(user)
+            .Collection(u => u.ReadableSpaces)
+            .Load();
+        mainDb.Entry(user)
+            .Collection(u => u.WriteableSpaces)
+            .Load();
+        fileSpace = mainDb.FileSpaces.Find(fileSpaceId);
+        if(fileSpace is null)
+        {
+            fileSpaceNotExists = true;
+            return;
+        }
+        if(user.OwnNamespaces.Contains(fileSpace))
+            readable = writeable = own = true;
+        else
+        {
+            readable = user.ReadableSpaces.Contains(fileSpace);
+            writeable = user.WriteableSpaces.Contains(fileSpace);
+        }
+        await RefreshList();
+    }
+
+    async Task RefreshList()
+    {
+        var para = new PropfindParameters();
+        para.Headers = [new("Depth", "1")];
+        var result = await davClient.Propfind($"/webdav/{fileSpaceId}/{folderPath}", para);
+        folders = orderBy switch
+        {
+            OrderBy.Name => orderByDesc switch
+            {
+                true => (from res in result.Resources
+                         where res.IsCollection && (displayHiddenItem ? true : !res.IsHidden) && res.Uri != $"/webdav/{fileSpaceId}/{(folderPath is not null ? folderPath.TrimEnd('/') + '/' : string.Empty)}"
+                         orderby res.DisplayName descending
+                         select res).ToArray(),
+                false => (from res in result.Resources
+                          where res.IsCollection && (displayHiddenItem ? true : !res.IsHidden) && res.Uri != $"/webdav/{fileSpaceId}/{(folderPath is not null ? folderPath.TrimEnd('/') + '/' : string.Empty)}"
+                          orderby res.DisplayName
+                          select res).ToArray()
+            },
+            OrderBy.CreatAt => orderByDesc switch
+            {
+                true => (from res in result.Resources
+                         where res.IsCollection && (displayHiddenItem ? true : !res.IsHidden) && res.Uri != $"/webdav/{fileSpaceId}/{(folderPath is not null ? folderPath.TrimEnd('/') + '/' : string.Empty)}"
+                         orderby res.CreationDate descending
+                         select res).ToArray(),
+                false => (from res in result.Resources
+                          where res.IsCollection && (displayHiddenItem ? true : !res.IsHidden) && res.Uri != $"/webdav/{fileSpaceId}/{(folderPath is not null ? folderPath.TrimEnd('/') + '/' : string.Empty)}"
+                          orderby res.CreationDate
+                          select res).ToArray()
+            },
+            OrderBy.LastModifiedAt => orderByDesc switch
+            {
+                true => (from res in result.Resources
+                         where res.IsCollection && (displayHiddenItem ? true : !res.IsHidden) && res.Uri != $"/webdav/{fileSpaceId}/{(folderPath is not null ? folderPath.TrimEnd('/') + '/' : string.Empty)}"
+                         orderby res.LastModifiedDate descending
+                         select res).ToArray(),
+                false => (from res in result.Resources
+                          where res.IsCollection && (displayHiddenItem ? true : !res.IsHidden) && res.Uri != $"/webdav/{fileSpaceId}/{(folderPath is not null ? folderPath.TrimEnd('/') + '/' : string.Empty)}"
+                          orderby res.LastModifiedDate
+                          select res).ToArray()
+            },
+            OrderBy.Size => orderByDesc switch
+            {
+                true => (from res in result.Resources
+                         where res.IsCollection && (displayHiddenItem ? true : !res.IsHidden) && res.Uri != $"/webdav/{fileSpaceId}/{(folderPath is not null ? folderPath.TrimEnd('/') + '/' : string.Empty)}"
+                         orderby res.ContentLength descending
+                         select res).ToArray(),
+                false => (from res in result.Resources
+                          where res.IsCollection && (displayHiddenItem ? true : !res.IsHidden) && res.Uri != $"/webdav/{fileSpaceId}/{(folderPath is not null ? folderPath.TrimEnd('/') + '/' : string.Empty)}"
+                          orderby res.ContentLength
+                          select res).ToArray()
+            },
+            _ => []
+        };
+        files = orderBy switch
+        {
+            OrderBy.CreatAt => orderByDesc switch
+            {
+                true => (from res in result.Resources
+                         where !res.IsCollection && (displayHiddenItem ? true : !res.IsHidden) && res.Uri != $"/webdav/{fileSpaceId}/{(folderPath is not null ? folderPath.TrimEnd('/') + '/' : string.Empty)}"
+                         orderby res.CreationDate descending
+                         select res).ToArray(),
+                false => (from res in result.Resources
+                          where !res.IsCollection && (displayHiddenItem ? true : !res.IsHidden) && res.Uri != $"/webdav/{fileSpaceId}/{(folderPath is not null ? folderPath.TrimEnd('/') + '/' : string.Empty)}"
+                          orderby res.CreationDate
+                          select res).ToArray()
+            },
+            OrderBy.LastModifiedAt => orderByDesc switch
+            {
+                true => (from res in result.Resources
+                         where !res.IsCollection && (displayHiddenItem ? true : !res.IsHidden) && res.Uri != $"/webdav/{fileSpaceId}/{(folderPath is not null ? folderPath.TrimEnd('/') + '/' : string.Empty)}"
+                         orderby res.LastModifiedDate descending
+                         select res).ToArray(),
+                false => (from res in result.Resources
+                          where !res.IsCollection && (displayHiddenItem ? true : !res.IsHidden) && res.Uri != $"/webdav/{fileSpaceId}/{(folderPath is not null ? folderPath.TrimEnd('/') + '/' : string.Empty)}"
+                          orderby res.LastModifiedDate
+                          select res).ToArray()
+            },
+            _ => orderByDesc switch
+            {
+                true => (from res in result.Resources
+                         where !res.IsCollection && (displayHiddenItem ? true : !res.IsHidden) && res.Uri != $"/webdav/{fileSpaceId}/{(folderPath is not null ? folderPath.TrimEnd('/') + '/' : string.Empty)}"
+                         orderby res.DisplayName descending
+                         select res).ToArray(),
+                false => (from res in result.Resources
+                          where !res.IsCollection && (displayHiddenItem ? true : !res.IsHidden) && res.Uri != $"/webdav/{fileSpaceId}/{(folderPath is not null ? folderPath.TrimEnd('/') + '/' : string.Empty)}"
+                          orderby res.DisplayName
+                          select res).ToArray()
+            }
+        };
+    }
+
+    async Task ChangeOrderBy(OrderBy to)
+    {
+        if (orderBy == to)
+        {
+            orderByDesc = !orderByDesc;
+        }
+        else
+        {
+            orderBy = to;
+            orderByDesc = orderBy switch
+            {
+                OrderBy.CreatAt or OrderBy.LastModifiedAt => true,
+                _ => false
+            };
+        }
+        await RefreshList();
+    }
+
+    string CalcOrderbyArrow(OrderBy to)
+    {
+        if (orderBy != to)
+            return "";
+        return orderByDesc ? "↓" : "↑";
+    }
+
+    string ByteToXiB(double size)
+    {
+        int i = 0;
+        for (; i < 4 && size > 4096; i++)
+            size /= 1024;
+        string unit = i switch
+        {
+            0 => "B",
+            1 => "KiB",
+            2 => "MiB",
+            3 => "GiB",
+            4 => "TiB"
+        };
+        return $"{size} {unit}";
+    }
+}

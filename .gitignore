@@ -369,3 +369,6 @@ FodyWeavers.xsd
 
 # autogen yaml config
 DavServerConfig-AutoGen.yaml
+
+#stroage file
+VirtualList/storages/

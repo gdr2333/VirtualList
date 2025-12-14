@@ -14,7 +14,7 @@ var conf = JsonSerializer.Deserialize<ConfigData>(File.ReadAllBytes("Config.json
 if(!Directory.Exists(conf.StroageAt))
     Directory.CreateDirectory(conf.StroageAt);
 
-File.WriteAllText("DavServerConfig-AutoGen.yaml", $"address: 127.0.0.1\nport: {conf.DavPort}\ntls: false\nprefix: /\ndebug: false\nnoSniff: false\nbehindProxy: true\ndirectory: {conf.StroageAt}\npermissions: CRUD\nrules: []\nrulesBehavior: overwrite\nlog:\n  format: console\n  colors: true\n  outputs:\n  - stderr\nnoPassword: true");
+File.WriteAllText("DavServerConfig-AutoGen.yaml", $"address: 127.0.0.1\nport: {conf.DavPort}\ntls: false\nprefix: /webdav/\ndebug: false\nnoSniff: false\nbehindProxy: true\ndirectory: {conf.StroageAt}\npermissions: CRUD\nrules: []\nrulesBehavior: overwrite\nlog:\n  format: console\n  colors: true\n  outputs:\n  - stderr\nnoPassword: true");
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -58,7 +58,7 @@ builder.Services.AddAuthentication(oa =>
 builder.Services.AddTransient<MainDbContext>((sc) => new(builder.Configuration.GetConnectionString("MainContext")!, sc.GetService<ILoggerFactory>()!));
 
 builder.Services.AddSingleton(conf);
-builder.Services.AddSingleton(new WebDavClient());
+builder.Services.AddSingleton(new WebDavClient(new WebDavClientParams { BaseAddress = new($"http://127.0.0.1:{conf.DavPort}/") }));
 
 builder.Services.AddReverseProxy()
     .LoadFromMemory(
@@ -71,24 +71,6 @@ builder.Services.AddReverseProxy()
             {
                 Path = "/webdav/{**catch-all}"
             },
-            Transforms =
-            [
-                new Dictionary<string, string>()
-                {
-                    ["RequestHeader"] = "Host",
-                    ["Set"] = "{HttpContext.Request.Host.Value}"
-                },
-                new Dictionary<string, string>
-                {
-                    ["RequestHeader"] = "X-Real-IP",
-                    ["Set"] = "{HttpContext.Connection.RemoteIpAddress}"
-                },
-                new Dictionary<string, string>
-                {
-                    ["RequestHeader"] = "REMOTE-HOST",
-                    ["Set"] = "{HttpContext.Connection.RemoteIpAddress}"
-                }
-            ]
         }
         ],
         [
@@ -117,13 +99,14 @@ builder.Services.AddHttpClient();
 
 var app = builder.Build();
 
+app.UseAntiforgery();
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-app.UseAntiforgery();
 
 app.UseRouting();
 

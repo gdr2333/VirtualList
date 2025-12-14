@@ -17,9 +17,9 @@ public partial class AuthenticationHandler(MainDbContext mainDb, ILoggerFactory 
     {
         foreach (var cookiePart in _context.Request.Headers.Cookie)
             foreach (var cookie in cookiePart?.Split(';') ?? [])
-                if (cookie?.StartsWith("Token=") ?? false)
+                if (cookie?.Trim()?.StartsWith("Token=") ?? false)
                 {
-                    var loginInfo = mainDb.LoginInfos.Find(Convert.FromBase64String(cookie[6..].Trim()));
+                    var loginInfo = mainDb.LoginInfos.Find(Convert.FromBase64String(cookie[7..].Trim()));
                     if (loginInfo is not null && loginInfo.ExpiresAt > DateTime.Now)
                     {
                         mainDb.Entry(loginInfo)

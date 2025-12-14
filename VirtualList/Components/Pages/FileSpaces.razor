@@ -2,12 +2,16 @@
 @rendermode InteractiveServer
 
 @using System.Security.Claims
+@using System.Threading.Tasks
 @using VirtualList.Datas
+@using WebDav
 
-@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject AuthenticationStateProvider authenticationStateProvider
 @inject MainDbContext mainDb
 @inject ILoggerFactory loggerFactory
 @inject NavigationManager navigationManager
+@inject IToastService toastService
+@inject WebDavClient davClient
 
 <PageTitle>文件空间管理 - VirtualList Alpha</PageTitle>
 
@@ -127,7 +131,7 @@
     {
         await base.OnInitializedAsync();
         logger = loggerFactory.CreateLogger("用户管理");
-        userName = (await AuthenticationStateProvider
+        userName = (await authenticationStateProvider
             .GetAuthenticationStateAsync())
             .User.FindFirstValue(ClaimTypes.Name) ?? "";
         thisUser = mainDb.Users.Find(userName);
@@ -233,13 +237,14 @@
         {
 #warning TODO：真的删除目录
             mainDb.FileSpaces.Remove(toDelete);
+            logger.LogInformation($"{userName}删除了文件空间{toDelete.Name}");
             toDelete = null;
             mainDb.SaveChanges();
             RefreshList();
         }
     }
 
-    void AddSpace()
+    async Task AddSpace()
     {
         addSpaceError = "";
         if(string.IsNullOrEmpty(spaceNameToAdd))
@@ -253,11 +258,14 @@
                 CreatedAt = DateTime.Now,
                 LastModifiedAt = DateTime.Now,
                 Owner = thisUser,
-                OwnerName = thisUser.Name
+                OwnerName = thisUser.Name,
+                Id = Guid.NewGuid()
             };
         mainDb.FileSpaces.Add(space);
+        await davClient.Mkcol($"/webdav/{space.Id}");
         mainDb.SaveChanges();
         RefreshList();
+        logger.LogInformation($"{userName}添加了文件空间{spaceNameToAdd}");
         spaceNameToAdd = "";
     }
 }
