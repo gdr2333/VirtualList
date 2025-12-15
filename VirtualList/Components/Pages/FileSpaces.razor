@@ -235,7 +235,7 @@
         haveDeleteConfirmDialog = false;
         if (deleteConfirmWindow.Confirmed && toDelete is not null)
         {
-#warning TODO：真的删除目录
+            davClient.Delete($"/webdav/{toDelete.Id}");
             mainDb.FileSpaces.Remove(toDelete);
             logger.LogInformation($"{userName}删除了文件空间{toDelete.Name}");
             toDelete = null;

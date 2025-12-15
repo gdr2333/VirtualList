@@ -124,9 +124,8 @@
     Guid fileSpaceId;
     UserInfo user;
     string userName;
-    ILogger logger;
     FileSpaceInfo? fileSpace;
-    bool readable, writeable, own, fileSpaceNotExists;
+    bool readable, writeable, fileSpaceNotExists;
     bool displayHiddenItem;
 
     bool displayShare = false;
@@ -216,7 +215,7 @@
             return;
         }
         if(user.OwnNamespaces.Contains(fileSpace))
-            readable = writeable = own = true;
+            readable = writeable = true;
         else
         {
             readable = user.ReadableSpaces.Contains(fileSpace);

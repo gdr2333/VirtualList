@@ -33,14 +33,19 @@
     }
 </FluentStack>
 
-@code {
+    @code {
     private string UserName { get; set; } = "";
     private string Password { get; set; } = "";
 
     private int LoginFails { get; set; } = 0;
 
-    private ILogger? realLogger;
-    private ILogger logger { get => realLogger ?? loggerFactory.CreateLogger("LoginPage"); }
+    private ILogger logger;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        logger = loggerFactory.CreateLogger("LoginPage");
+    }
 
     async Task DoLogin()
     {
