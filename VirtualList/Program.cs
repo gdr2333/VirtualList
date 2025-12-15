@@ -55,7 +55,7 @@ builder.Services.AddAuthentication(oa =>
     oa.AddScheme<AuthenticationHandler>("basic", "Basic");
 });
 
-builder.Services.AddTransient<MainDbContext>((sc) => new(builder.Configuration.GetConnectionString("MainContext")!, sc.GetService<ILoggerFactory>()!));
+builder.Services.AddScoped<MainDbContext>((sc) => new(builder.Configuration.GetConnectionString("MainContext")!, sc.GetService<ILoggerFactory>()!));
 
 builder.Services.AddSingleton(conf);
 builder.Services.AddSingleton(new WebDavClient(new WebDavClientParams { BaseAddress = new($"http://127.0.0.1:{conf.DavPort}/") }));
@@ -109,8 +109,6 @@ builder.Services.AddHttpClient();
 
 var app = builder.Build();
 
-app.UseAntiforgery();
-
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
@@ -122,6 +120,7 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseAntiforgery();
 
 app.UseWebDav();
 // 必须在WebDAV之后执行，否则会被鉴权拦下来

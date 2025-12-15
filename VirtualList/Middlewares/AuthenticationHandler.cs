@@ -17,9 +17,12 @@ public partial class AuthenticationHandler(MainDbContext mainDb, ILoggerFactory 
     {
         foreach (var cookiePart in _context.Request.Headers.Cookie)
             foreach (var cookie in cookiePart?.Split(';') ?? [])
-                if (cookie?.Trim()?.StartsWith("Token=") ?? false)
+                if (cookie?.Trim()?.StartsWith("Token") ?? false)
                 {
-                    var loginInfo = mainDb.LoginInfos.Find(Convert.FromBase64String(cookie[6..].Trim()));
+                    byte[] bytes = new byte[64];
+                    if(!Convert.TryFromBase64String(cookie[(cookie.IndexOf('=') + 1)..].Trim(), bytes, out _))
+                        return AuthenticateResult.Fail("请登录（网页用户）或使用Basic验证输入用户名和密码（WebDAV用户）");
+                    var loginInfo = mainDb.LoginInfos.Find(bytes);
                     if (loginInfo is not null && loginInfo.ExpiresAt > DateTime.Now)
                     {
                         mainDb.Entry(loginInfo)
