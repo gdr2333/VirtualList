@@ -144,9 +144,7 @@
     }
     OrderBy orderBy = OrderBy.Name;
     bool orderByDesc = false;
-
-    string CalcPath(WebDavResource file) => $"/webdav/{fileSpaceId}/{(folderPath is not null ? folderPath.TrimEnd('/') + '/' : string.Empty)}{file.DisplayName}";
-
+    
     async Task NewFolder()
     {
         newFolderName = newFolderName.Trim();
